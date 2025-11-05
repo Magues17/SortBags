@@ -1,92 +1,88 @@
--- SortBags_Button.lua — Turtle WoW 1.12
--- Round minimap button with “SB”, draggable (Shift+Drag). Tunable offsets below.
+-- SortBags_Button.lua  (Turtle WoW 1.12 / Lua 5.0)
 
-SortBagsDB = SortBagsDB or { angle = 45 }
+-- Per-character saved pos
+SortBagsDB = SortBagsDB or { x = 40, y = -140 }
 
--- ======= tweak here if it looks a hair off on your UI =======
-local RADIUS_PAD   = 4      -- smaller = closer to the very edge (try 3–6)
-local RING_OX, RING_OY = -10, 10   -- tracking ring anchor offsets
-local CENTER_OX, CENTER_OY = -1, 1 -- text/disc center offsets
--- ============================================================
+local BTN_NAME = "SortBags_MinimapButton"
+local btn = CreateFrame("Button", BTN_NAME, UIParent)
 
-local btn = CreateFrame("Button", "SortBags_MinimapButton", Minimap)
-btn:SetWidth(31); btn:SetHeight(31)
-btn:SetFrameStrata("MEDIUM"); btn:SetFrameLevel(8)
+-- 1) Blizzard minimap button footprint
+btn:SetFrameStrata("HIGH")
+btn:SetClampedToScreen(true)
+btn:SetMovable(true)
 btn:EnableMouse(true)
-btn:RegisterForClicks("LeftButtonUp")
-btn:RegisterForDrag("LeftButton")
+btn:SetWidth(49); btn:SetHeight(49)
 
--- Gold ring (Blizzard tracking border)
-local ring = btn:CreateTexture(nil, "OVERLAY")
-ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-ring:SetWidth(54); ring:SetHeight(54)
-ring:SetPoint("TOPLEFT", RING_OX, RING_OY)
+-- Anchor using saved offsets (free-move anywhere)
+btn:ClearAllPoints()
+btn:SetPoint("TOPLEFT", UIParent, "TOPLEFT", SortBagsDB.x, SortBagsDB.y)
 
--- Inner round disc
-local disc = btn:CreateTexture(nil, "ARTWORK")
-disc:SetTexture("Interface\\Minimap\\UI-Minimap-Background")
-disc:SetVertexColor(0.10, 0.10, 0.10, 1)
-disc:SetWidth(20); disc:SetHeight(20)
-disc:SetPoint("CENTER", CENTER_OX, CENTER_OY)
+-- 2) Gold ring border (Blizzard standard)
+local border = btn:CreateTexture(nil, "OVERLAY")
+border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+border:SetAllPoints(btn)
 
--- “SB” label
-local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-fs:SetPoint("CENTER", CENTER_OX, CENTER_OY)
-fs:SetText("SB")
-fs:SetTextColor(1.0, 0.95, 0.2)
-fs:SetShadowColor(0,0,0,1)
-fs:SetShadowOffset(1,-1)
+-- 3) Inner circular “icon” pad (20×20, SLIGHT upward nudge)
+--    This pad defines the true visual center inside the ring.
+local pad = btn:CreateTexture(nil, "BACKGROUND")
+pad:SetTexture("Interface\\Minimap\\UI-Minimap-Background") -- dark disc
+pad:SetWidth(20); pad:SetHeight(20)
+pad:SetPoint("CENTER", btn, "CENTER", -10, 11) -- <- classic offset
+pad:SetVertexColor(0, 0, 0, 0.65)
 
--- Hover highlight
-local hl = btn:CreateTexture(nil, "HIGHLIGHT")
-hl:SetTexture("Interface\\Buttons\\ButtonHilight-Square")
-hl:SetBlendMode("ADD")
-hl:SetAllPoints(disc)
-
--- Place on the rim
-local function updatePosition()
-  local angle = SortBagsDB.angle or 45
-  local radius = (Minimap:GetWidth() / 2) - RADIUS_PAD
-  local x = cos(angle) * radius
-  local y = sin(angle) * radius
-  btn:ClearAllPoints()
-  btn:SetPoint("CENTER", Minimap, "CENTER", x, y)
+-- 4) “SB” text centered on the pad (so it stays inside the ring)
+local label = btn:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+label:SetPoint("CENTER", pad, "CENTER", 0, -1) -- tiny nudge looks best
+do
+  local f, size = label:GetFont()
+  label:SetFont(f, 12)           -- 12 fits cleanly inside the ring
 end
+label:SetTextColor(1.0, 0.82, 0) -- Blizzard gold
+label:SetText("SB")
 
-local function recalcAngleFromCursor()
-  local mx, my = Minimap:GetCenter()
-  local cx, cy = GetCursorPosition()
-  local scale = Minimap:GetEffectiveScale()
-  local dx, dy = cx/scale - mx, cy/scale - my
-  SortBagsDB.angle = math.deg(math.atan2(dy, dx))
-  updatePosition()
-end
-
-btn:SetScript("OnDragStart", function()
-  if IsShiftKeyDown() then this.isMoving = true end
-end)
-btn:SetScript("OnDragStop", function() this.isMoving = nil end)
-btn:SetScript("OnUpdate", function()
-  if this.isMoving then recalcAngleFromCursor() end
-end)
-
+-- 5) Tooltip (1.12 uses `this`; no var args)
 btn:SetScript("OnEnter", function()
-  GameTooltip:SetOwner(this, "ANCHOR_TOP")
-  GameTooltip:AddLine("SortBags")
-  GameTooltip:AddLine("Click: Sort inventory", 1,1,1)
-  GameTooltip:AddLine("Shift+Drag: Move around minimap", 1,1,1)
+  GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT")
+  GameTooltip:ClearLines()
+  GameTooltip:AddLine("SortBags", 5, 0.82, 0)
+  GameTooltip:AddLine("Click: Sort inventory", 1, 1, 1)
+  GameTooltip:AddLine("Shift+Drag: Move anywhere", 1, 1, 1)
   GameTooltip:Show()
 end)
 btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-btn:SetScript("OnClick", function()
-  if SortBags_Run then SortBags_Run() end
-end)
 
-btn:RegisterEvent("PLAYER_LOGIN")
-btn:RegisterEvent("PLAYER_ENTERING_WORLD")
-btn:SetScript("OnEvent", function()
-  if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
-    updatePosition()
-    this:Show()
+-- 6) Click = run sorter (no grey/enable state)
+btn:SetScript("OnClick", function()
+  if SortBags_Run and (not SortBags_IsBusy or not SortBags_IsBusy()) then
+    SortBags_Run()
   end
 end)
+
+-- 7) Free-move anywhere with Shift+Drag, persist position
+btn:RegisterForDrag("LeftButton")
+btn:SetScript("OnDragStart", function()
+  if IsShiftKeyDown() then this:StartMoving() end
+end)
+btn:SetScript("OnDragStop", function()
+  this:StopMovingOrSizing()
+  -- save top-left offsets so it looks identical after reload
+  local left  = this:GetLeft()  or 0
+  local top   = this:GetTop()   or 0
+  local uLeft = math.floor(left + 0.5)
+  local uTop  = math.floor(top  + 0.5)
+  SortBagsDB.x = uLeft
+  SortBagsDB.y = uTop - UIParent:GetTop()  -- convert to TOPLEFT offsets
+  btn:ClearAllPoints()
+  btn:SetPoint("TOPLEFT", UIParent, "TOPLEFT", SortBagsDB.x, SortBagsDB.y)
+end)
+
+-- 8) Re-apply saved pos on login (and normalize if missing)
+btn:SetScript("OnEvent", function()
+  if event == "PLAYER_LOGIN" then
+    local x = SortBagsDB.x or 40
+    local y = SortBagsDB.y or -140
+    btn:ClearAllPoints()
+    btn:SetPoint("TOPLEFT", UIParent, "TOPLEFT", x, y)
+  end
+end)
+btn:RegisterEvent("PLAYER_LOGIN")

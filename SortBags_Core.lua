@@ -5,9 +5,9 @@
 -------------------------------------------------------
 -- Tunables
 -------------------------------------------------------
-local STEP_THROTTLE = 0.04   -- ~25 moves/sec
+local STEP_THROTTLE = 0.08   -- ~25 moves/sec
 local MAX_PASSES    = 3      -- run up to N full passes automatically
-local STALL_SEC     = 1.5    -- if no swaps for this long, rebuild plan
+local STALL_SEC     = 1.7    -- if no swaps for this long, rebuild plan
 local DEBUG         = false
 
 local function dprint(msg)

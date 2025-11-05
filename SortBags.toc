@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: SortBags
+## Notes: Simple bag sorter for Turtle/Classic. (Button coming soon.)
+## Author: Mags
+## Version: 0.2
+SortBags_Boot.lua
+SortBags_Core.lua

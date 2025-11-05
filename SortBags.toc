@@ -1,7 +1,9 @@
 ## Interface: 11200
 ## Title: SortBags
-## Notes: Simple bag sorter for Turtle/Classic. (Button coming soon.)
-## Author: Mags
-## Version: 0.2
-SortBags_Boot.lua
+## Notes: One-click multi-pass bag sorter for Turtle WoW
+## Author: Magues
+## Version: 0.1.0
+## SavedVariables: SortBagsDB
+
 SortBags_Core.lua
+SortBags_Button.lua

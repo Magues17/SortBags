@@ -231,6 +231,12 @@ driver:SetScript("OnUpdate", function()
   end
 end)
 
+-- expose busy state to UI button
+function SortBags_IsBusy()
+  return busy and true or false
+end
+
+
 function SortBags_Run()
   if busy then return end
   passNum, plan, lastSwapClock = 1, nil, 0
